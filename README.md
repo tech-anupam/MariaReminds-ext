@@ -18,4 +18,4 @@ A mindful hydration & break companion for your browser.
 
 ***
 
-Created by [Anupam Jha](https://github.com)
+Created by [Anupam Jha](https://github.com/tech-anupam)
