@@ -18,22 +18,19 @@ import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { browser } from "wxt/browser";
 
-const PRESET_INTERVALS: { label: string; seconds: number }[] = [
-  { label: "10s", seconds: 10 },
-  { label: "30s", seconds: 30 },
-  { label: "1m", seconds: 60 },
-  { label: "5m", seconds: 300 },
-  { label: "15m", seconds: 900 },
-  { label: "30m", seconds: 1800 },
-  { label: "1h", seconds: 3600 },
-];
-
-/* Pure SVG Icons (No Emojis) */
 function SettingsIcon() {
   return (
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <circle cx="12" cy="12" r="3" />
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  );
+}
+
+function GithubIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
     </svg>
   );
 }
@@ -115,6 +112,13 @@ function SectionLabel({ children }: { children: ReactNode }) {
   );
 }
 
+const QUICK_PRESETS = [
+  { label: "10s", seconds: 10 },
+  { label: "15m", seconds: 900 },
+  { label: "30m", seconds: 1800 },
+  { label: "1h", seconds: 3600 },
+];
+
 function TimeIntervalPicker({
   valueSeconds,
   onChange,
@@ -122,6 +126,8 @@ function TimeIntervalPicker({
   valueSeconds: number;
   onChange: (seconds: number) => void;
 }) {
+  const isPreset = QUICK_PRESETS.some((p) => p.seconds === valueSeconds);
+  const [showCustom, setShowCustom] = useState(!isPreset);
   const [hours, setHours] = useState(() => Math.floor(valueSeconds / 3600));
   const [minutes, setMinutes] = useState(() => Math.floor((valueSeconds % 3600) / 60));
   const [seconds, setSeconds] = useState(() => valueSeconds % 60);
@@ -130,6 +136,9 @@ function TimeIntervalPicker({
     setHours(Math.floor(valueSeconds / 3600));
     setMinutes(Math.floor((valueSeconds % 3600) / 60));
     setSeconds(valueSeconds % 60);
+    if (!QUICK_PRESETS.some((p) => p.seconds === valueSeconds)) {
+      setShowCustom(true);
+    }
   }, [valueSeconds]);
 
   const handleApplyHms = () => {
@@ -149,17 +158,21 @@ function TimeIntervalPicker({
     }
   };
 
+  const handlePresetClick = (secs: number) => {
+    setShowCustom(false);
+    onChange(secs);
+  };
+
   return (
-    <div className="space-y-2">
-      {/* Segmented Presets */}
-      <div className="grid grid-cols-4 gap-1.5 rounded-xl bg-slate-100/90 p-1 border border-slate-200/60">
-        {PRESET_INTERVALS.map((preset) => {
-          const active = valueSeconds === preset.seconds;
+    <div className="space-y-2 rounded-2xl border border-slate-200/90 bg-white p-3 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
+      <div className="grid grid-cols-5 gap-1 rounded-xl bg-slate-100/90 p-1 border border-slate-200/60">
+        {QUICK_PRESETS.map((preset) => {
+          const active = !showCustom && valueSeconds === preset.seconds;
           return (
             <button
               key={preset.seconds}
               type="button"
-              onClick={() => onChange(preset.seconds)}
+              onClick={() => handlePresetClick(preset.seconds)}
               aria-pressed={active}
               className={`h-[28px] rounded-lg text-[11.5px] font-semibold transition-all ${
                 active
@@ -171,67 +184,99 @@ function TimeIntervalPicker({
             </button>
           );
         })}
-      </div>
-
-      {/* Direct Stepper Input */}
-      <div className="flex items-center gap-1.5 pt-0.5">
-        <div className="flex flex-1 items-center rounded-xl border border-slate-200 bg-white px-2 py-1.5 shadow-sm focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
-          <input
-            type="number"
-            min={0}
-            max={24}
-            value={hours === 0 ? "" : hours}
-            onChange={(e) => setHours(Math.max(0, parseInt(e.target.value, 10) || 0))}
-            onKeyDown={handleKeyDown}
-            placeholder="0"
-            aria-label="Hours"
-            className="w-full bg-transparent text-center text-[13px] font-bold text-slate-800 placeholder:text-slate-300 focus:outline-none"
-          />
-          <span className="ml-0.5 text-[11px] font-bold text-slate-400">h</span>
-        </div>
-
-        <span className="text-[13px] font-bold text-slate-300">:</span>
-
-        <div className="flex flex-1 items-center rounded-xl border border-slate-200 bg-white px-2 py-1.5 shadow-sm focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
-          <input
-            type="number"
-            min={0}
-            max={59}
-            value={minutes === 0 ? "" : minutes}
-            onChange={(e) => setMinutes(Math.max(0, parseInt(e.target.value, 10) || 0))}
-            onKeyDown={handleKeyDown}
-            placeholder="0"
-            aria-label="Minutes"
-            className="w-full bg-transparent text-center text-[13px] font-bold text-slate-800 placeholder:text-slate-300 focus:outline-none"
-          />
-          <span className="ml-0.5 text-[11px] font-bold text-slate-400">m</span>
-        </div>
-
-        <span className="text-[13px] font-bold text-slate-300">:</span>
-
-        <div className="flex flex-1 items-center rounded-xl border border-slate-200 bg-white px-2 py-1.5 shadow-sm focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
-          <input
-            type="number"
-            min={0}
-            max={59}
-            value={seconds === 0 ? "" : seconds}
-            onChange={(e) => setSeconds(Math.max(0, parseInt(e.target.value, 10) || 0))}
-            onKeyDown={handleKeyDown}
-            placeholder="0"
-            aria-label="Seconds"
-            className="w-full bg-transparent text-center text-[13px] font-bold text-slate-800 placeholder:text-slate-300 focus:outline-none"
-          />
-          <span className="ml-0.5 text-[11px] font-bold text-slate-400">s</span>
-        </div>
-
         <button
           type="button"
-          onClick={handleApplyHms}
-          className="h-[32px] rounded-xl border border-slate-200 bg-white px-3 text-[11.5px] font-bold text-slate-700 shadow-sm hover:bg-slate-50 hover:border-slate-300 active:scale-[0.96] transition-all"
+          onClick={() => setShowCustom(true)}
+          aria-pressed={showCustom}
+          className={`h-[28px] rounded-lg text-[11.5px] font-semibold transition-all ${
+            showCustom
+              ? "bg-white text-blue-700 shadow-sm ring-1 ring-slate-900/5 font-bold"
+              : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+          }`}
         >
-          Set
+          Custom
         </button>
       </div>
+
+      {showCustom ? (
+        <div className="flex items-center gap-1.5 pt-1">
+          <div className="flex flex-1 items-center rounded-xl border border-slate-200 bg-slate-50/70 px-2 py-1.5 shadow-sm focus-within:border-blue-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+            <input
+              type="number"
+              min={0}
+              max={24}
+              value={hours === 0 ? "" : hours}
+              onChange={(e) => setHours(Math.max(0, parseInt(e.target.value, 10) || 0))}
+              onKeyDown={handleKeyDown}
+              placeholder="0"
+              aria-label="Hours"
+              className="w-full bg-transparent text-center text-[12.5px] font-bold text-slate-800 placeholder:text-slate-300 focus:outline-none"
+            />
+            <span className="ml-0.5 text-[10.5px] font-bold text-slate-400">h</span>
+          </div>
+
+          <span className="text-[12px] font-bold text-slate-300">:</span>
+
+          <div className="flex flex-1 items-center rounded-xl border border-slate-200 bg-slate-50/70 px-2 py-1.5 shadow-sm focus-within:border-blue-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+            <input
+              type="number"
+              min={0}
+              max={59}
+              value={minutes === 0 ? "" : minutes}
+              onChange={(e) => setMinutes(Math.max(0, parseInt(e.target.value, 10) || 0))}
+              onKeyDown={handleKeyDown}
+              placeholder="0"
+              aria-label="Minutes"
+              className="w-full bg-transparent text-center text-[12.5px] font-bold text-slate-800 placeholder:text-slate-300 focus:outline-none"
+            />
+            <span className="ml-0.5 text-[10.5px] font-bold text-slate-400">m</span>
+          </div>
+
+          <span className="text-[12px] font-bold text-slate-300">:</span>
+
+          <div className="flex flex-1 items-center rounded-xl border border-slate-200 bg-slate-50/70 px-2 py-1.5 shadow-sm focus-within:border-blue-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+            <input
+              type="number"
+              min={0}
+              max={59}
+              value={seconds === 0 ? "" : seconds}
+              onChange={(e) => setSeconds(Math.max(0, parseInt(e.target.value, 10) || 0))}
+              onKeyDown={handleKeyDown}
+              placeholder="0"
+              aria-label="Seconds"
+              className="w-full bg-transparent text-center text-[12.5px] font-bold text-slate-800 placeholder:text-slate-300 focus:outline-none"
+            />
+            <span className="ml-0.5 text-[10.5px] font-bold text-slate-400">s</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleApplyHms}
+            className="h-[32px] rounded-xl bg-blue-600 px-3 text-[11.5px] font-bold text-white shadow-sm hover:bg-blue-700 active:scale-[0.96] transition-all"
+          >
+            Set
+          </button>
+        </div>
+      ) : (
+        <div className="pt-1.5 pb-0.5 px-1 space-y-1.5">
+          <input
+            type="range"
+            min={10}
+            max={3600}
+            step={10}
+            value={valueSeconds}
+            onChange={(e) => onChange(parseInt(e.target.value, 10))}
+            aria-label="Interval slider"
+            className="w-full accent-blue-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+          />
+          <div className="flex justify-between text-[9.5px] text-slate-400 font-semibold px-0.5">
+            <span>10s</span>
+            <span>15m</span>
+            <span>30m</span>
+            <span>1h</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -373,11 +418,9 @@ export default function Popup() {
     await sendToBackground({ type: "SETTINGS_UPDATED" });
   };
 
-  // Settings Screen
   if (settingsOpen) {
     return (
       <div className="w-[320px] bg-slate-50 text-slate-800 font-sans antialiased overflow-hidden">
-        {/* Header */}
         <div className="flex h-12 items-center justify-between border-b border-slate-200/80 bg-white px-4">
           <button
             type="button"
@@ -392,7 +435,6 @@ export default function Popup() {
         </div>
 
         <div className="max-h-[460px] overflow-y-auto px-4 py-3 space-y-4">
-          {/* Active Reminder Badge */}
           <div>
             <SectionLabel>Current Routine</SectionLabel>
             <div className="rounded-xl border border-blue-200/80 bg-blue-50/60 p-3 flex items-center gap-3">
@@ -401,12 +443,11 @@ export default function Popup() {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-[12.5px] font-bold text-blue-950">Maria: Drink Water</p>
-                <p className="text-[11px] text-blue-800/70">8-second hydration break</p>
+                <p className="text-[11px] text-blue-800/70">8-second 60fps hydration break</p>
               </div>
             </div>
           </div>
 
-          {/* Controls */}
           <div>
             <SectionLabel>Audio & Effects</SectionLabel>
             <div className="rounded-xl border border-slate-200 bg-white divide-y divide-slate-100 shadow-sm">
@@ -441,7 +482,6 @@ export default function Popup() {
             </div>
           </div>
 
-          {/* Excluded Sites */}
           <div>
             <SectionLabel>Excluded Websites</SectionLabel>
             <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm space-y-2.5">
@@ -501,7 +541,6 @@ export default function Popup() {
             </div>
           </div>
 
-          {/* Custom Animation Upload */}
           <div>
             <SectionLabel>Custom Video</SectionLabel>
             <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm space-y-2">
@@ -545,10 +584,8 @@ export default function Popup() {
     );
   }
 
-  // Main UI
   return (
     <div className="w-[320px] bg-gradient-to-b from-slate-50 via-white to-sky-50/30 text-slate-800 font-sans antialiased overflow-hidden">
-      {/* Top App Bar */}
       <div className="flex h-12 items-center justify-between border-b border-slate-200/70 px-4 bg-white/90 backdrop-blur-md">
         <div className="flex items-center gap-2">
           <div className="h-7 w-7 rounded-lg bg-gradient-to-tr from-blue-600 to-cyan-500 text-white flex items-center justify-center shadow-sm">
@@ -565,7 +602,16 @@ export default function Popup() {
         </div>
 
         <div className="flex items-center gap-1">
-          {/* Quick Sound Toggle */}
+          <a
+            href="https://github.com/tech-anupam/MariaReminds-ext"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="GitHub repository"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+          >
+            <GithubIcon className="h-4 w-4" />
+          </a>
+
           <button
             type="button"
             onClick={handleToggleSound}
@@ -579,7 +625,6 @@ export default function Popup() {
             )}
           </button>
 
-          {/* Preferences */}
           <button
             type="button"
             onClick={() => setSettingsOpen(true)}
@@ -593,7 +638,6 @@ export default function Popup() {
       </div>
 
       <div className="p-4 space-y-3.5">
-        {/* Main Status & Countdown Card */}
         <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)] transition-all">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div className="flex items-center gap-2">
@@ -621,7 +665,6 @@ export default function Popup() {
             />
           </div>
 
-          {/* Countdown Clock Display */}
           <div className="pt-3.5 pb-2 text-center">
             {settings.enabled ? (
               nextBreakAt && nextBreakAt > Date.now() ? (
@@ -658,7 +701,6 @@ export default function Popup() {
             )}
           </div>
 
-          {/* Daily Progress Counters (Pure SVG Icons) */}
           <div className="mt-3 flex items-center justify-around rounded-xl bg-slate-50 p-2 border border-slate-100 text-[11px]">
             <div className="flex items-center gap-1.5 text-slate-600 font-semibold">
               <CheckCircleIcon className="h-3.5 w-3.5 text-blue-600" />
@@ -672,7 +714,6 @@ export default function Popup() {
           </div>
         </div>
 
-        {/* Remind Interval Section */}
         <div className="space-y-2">
           <div className="flex items-center justify-between px-1">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
@@ -689,7 +730,6 @@ export default function Popup() {
           />
         </div>
 
-        {/* Hero "Take a break now" Action Button */}
         <div className="pt-0.5">
           <button
             type="button"

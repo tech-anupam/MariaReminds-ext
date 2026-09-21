@@ -28,7 +28,6 @@ export default function BreakOverlayApp({
     null,
   );
 
-  // Initial load and storage subscription
   useEffect(() => {
     if (ctx.isInvalid) return;
     getFullState().then((s) => {
@@ -44,7 +43,6 @@ export default function BreakOverlayApp({
     };
   }, [ctx]);
 
-  // Tab switching: sync full state when this tab becomes visible or focused
   useEffect(() => {
     if (ctx.isInvalid) return;
 
@@ -69,7 +67,6 @@ export default function BreakOverlayApp({
     };
   }, [ctx]);
 
-  // Custom video storage listener
   useEffect(() => {
     if (ctx.isInvalid) return;
     getCustomVideo().then((url) => {
@@ -96,7 +93,6 @@ export default function BreakOverlayApp({
     };
   }, [ctx]);
 
-  // Background broadcast listener
   useEffect(() => {
     if (ctx.isInvalid) return;
     const onMessage = (msg: any) => {
@@ -136,7 +132,6 @@ export default function BreakOverlayApp({
   const isActive =
     !!pendingBreak && !!breakType && !isStaleOrInvalid && !isExcluded;
 
-  // Manage Shadow Host visibility, pointer events, and document scroll locking
   useEffect(() => {
     const shadowHtml = (shadow || shadowHost?.shadowRoot)?.querySelector(
       "html",
@@ -177,6 +172,53 @@ export default function BreakOverlayApp({
       document.documentElement.style.overflow = "";
     }
   }, [isActive, shadowHost, shadow]);
+
+  useEffect(() => {
+    if (!isActive) return;
+
+    const pausedHostMedia: HTMLMediaElement[] = [];
+
+    const pauseExistingMedia = () => {
+      const mediaList = Array.from(
+        document.querySelectorAll<HTMLMediaElement>("video, audio"),
+      );
+      for (const media of mediaList) {
+        if (media.closest?.("[data-wxt-shadow-root]")) continue;
+        if (!media.paused) {
+          try {
+            media.pause();
+            pausedHostMedia.push(media);
+          } catch {}
+        }
+      }
+    };
+
+    pauseExistingMedia();
+
+    const blockPlayListener = (e: Event) => {
+      const target = e.target as HTMLMediaElement | null;
+      if (
+        target &&
+        (target.tagName === "VIDEO" || target.tagName === "AUDIO") &&
+        !target.closest?.("[data-wxt-shadow-root]")
+      ) {
+        try {
+          target.pause();
+        } catch {}
+      }
+    };
+
+    window.addEventListener("play", blockPlayListener, true);
+
+    return () => {
+      window.removeEventListener("play", blockPlayListener, true);
+      for (const media of pausedHostMedia) {
+        try {
+          media.play().catch(() => void 0);
+        } catch {}
+      }
+    };
+  }, [isActive]);
 
   useEffect(() => {
     if (isStaleOrInvalid && !ctx.isInvalid) {
@@ -223,7 +265,6 @@ function BreakVideo({
   breakType,
   triggeredAt,
   videoSrc,
-  useCustomVideo,
 }: {
   ctx: ContentScriptContext;
   breakType: ReturnType<typeof getBreakType>;
@@ -241,12 +282,10 @@ function BreakVideo({
     sendToBackground({ type: "COMPLETE_BREAK" });
   }, [ctx]);
 
-  // Compute how many seconds have elapsed since the break started globally
   const getElapsedSeconds = useCallback(() => {
     return Math.max(0, (Date.now() - triggeredAt) / 1000);
   }, [triggeredAt]);
 
-  // Sync playback time and play smoothly
   const syncPlayback = useCallback(
     (forceSeek = false) => {
       const video = videoRef.current;
@@ -254,7 +293,6 @@ function BreakVideo({
 
       const elapsed = getElapsedSeconds();
 
-      // If video has already elapsed past its duration, complete break
       if (
         Number.isFinite(video.duration) &&
         video.duration > 0 &&
@@ -267,35 +305,28 @@ function BreakVideo({
       const isVisible = document.visibilityState === "visible";
 
       if (isVisible) {
-        // Only seek on mount, metadata load, or when tab becomes visible after being hidden
-        // Never seek during continuous playback to ensure 60fps smoothness with zero stutters
         if (forceSeek || Math.abs(video.currentTime - elapsed) > 1.8) {
           try {
             video.currentTime = elapsed;
           } catch {}
         }
 
-        // Muted video in webpage avoids Chrome autoplay policy blocks
-        // (audio is played seamlessly by the extension offscreen document)
         video.muted = true;
         const playPromise = video.play();
         if (playPromise) {
           playPromise.catch(() => void 0);
         }
       } else {
-        // Background tab: pause to save 100% CPU/GPU decoding resources
         video.pause();
       }
     },
     [complete, ctx, getElapsedSeconds],
   );
 
-  // Sync immediately on mount
   useEffect(() => {
     syncPlayback(true);
   }, [syncPlayback]);
 
-  // Handle visibility changes across tabs
   useEffect(() => {
     const onVisibilityChange = () => {
       if (document.visibilityState === "visible") {
@@ -317,14 +348,12 @@ function BreakVideo({
     };
   }, [syncPlayback]);
 
-  // Safety timeout: complete break after duration + 4s buffer
   useEffect(() => {
     const timeoutDuration = (breakType.suggestedSeconds + 4) * 1000;
     const id = ctx.setTimeout(() => complete(), timeoutDuration);
     return () => window.clearTimeout(id);
   }, [breakType.suggestedSeconds, complete, ctx]);
 
-  // Escape key dismisses the break
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") complete();
@@ -333,56 +362,245 @@ function BreakVideo({
     return () => window.removeEventListener("keydown", onKey);
   }, [complete]);
 
-  const sourceVideo = (
-    <video
-      ref={videoRef}
-      src={videoSrc}
-      className="h-full w-full object-contain pointer-events-none drop-shadow-[0_20px_50px_rgba(0,0,0,0.6)]"
-      style={{
-        display: videoFailed ? "none" : "block",
-        willChange: "transform",
-        transform: "translateZ(0)",
-      }}
-      autoPlay
-      muted
-      loop={false}
-      playsInline
-      disablePictureInPicture
-      onLoadedMetadata={() => syncPlayback(true)}
-      onCanPlay={() => syncPlayback(true)}
-      onEnded={complete}
-      onError={() => setVideoFailed(true)}
-      aria-hidden="true"
-      tabIndex={-1}
-    />
-  );
-
   return (
     <div
-      className="maria-overlay-root fixed inset-0 z-[2147483647] flex items-center justify-center bg-slate-950/75 backdrop-blur-md transition-all select-none cursor-pointer"
+      className="maria-overlay-root fixed inset-0 z-[2147483647] flex items-center justify-center bg-slate-950/70 backdrop-blur-md transition-all select-none cursor-pointer"
       role="dialog"
       aria-modal="true"
-      aria-label={
-        useCustomVideo ? "Break time" : `Maria break: ${breakType.label}`
-      }
+      aria-label="Maria break"
       onClick={complete}
-      style={{ willChange: "opacity" }}
     >
-      {/* Centered Large 60 FPS Video Display (Pure video, no distracting text/options) */}
       <div
         className="relative flex items-center justify-center w-[min(1280px,92vw)] max-h-[88vh] aspect-video"
-        onClick={() => {
-          // Allow clicking video container to also dismiss
-          complete();
-        }}
-        style={{ willChange: "transform", transform: "translateZ(0)" }}
+        onClick={complete}
       >
         {videoFailed ? (
           <div className="h-full w-full bg-slate-900/60 rounded-2xl border border-white/5" />
         ) : (
-          sourceVideo
+          <TransparentCanvasVideo
+            videoSrc={videoSrc}
+            videoRef={videoRef}
+            onLoadedMetadata={() => syncPlayback(true)}
+            onCanPlay={() => syncPlayback(true)}
+            onEnded={complete}
+            onError={() => setVideoFailed(true)}
+          />
         )}
       </div>
     </div>
+  );
+}
+
+function TransparentCanvasVideo({
+  videoSrc,
+  videoRef,
+  onLoadedMetadata,
+  onCanPlay,
+  onEnded,
+  onError,
+}: {
+  videoSrc: string;
+  videoRef: React.RefObject<HTMLVideoElement>;
+  onLoadedMetadata: () => void;
+  onCanPlay: () => void;
+  onEnded: () => void;
+  onError: () => void;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
+
+    let gl: WebGLRenderingContext | null = null;
+    let program: WebGLProgram | null = null;
+    let texture: WebGLTexture | null = null;
+    let positionBuffer: WebGLBuffer | null = null;
+    let uvBuffer: WebGLBuffer | null = null;
+    let callbackId: number | null = null;
+    let animId: number | null = null;
+    let isDisposed = false;
+
+    try {
+      gl =
+        canvas.getContext("webgl", { alpha: true, premultipliedAlpha: false }) ||
+        (canvas.getContext("experimental-webgl", {
+          alpha: true,
+          premultipliedAlpha: false,
+        }) as WebGLRenderingContext | null);
+    } catch {}
+
+    if (gl) {
+      const vsSource = `
+        attribute vec2 a_pos;
+        attribute vec2 a_uv;
+        varying vec2 v_uv;
+        void main() {
+          gl_Position = vec4(a_pos, 0.0, 1.0);
+          v_uv = a_uv;
+        }
+      `;
+
+      const fsSource = `
+        precision mediump float;
+        uniform sampler2D u_tex;
+        varying vec2 v_uv;
+        void main() {
+          vec4 color = texture2D(u_tex, v_uv);
+          float maxVal = max(color.r, max(color.g, color.b));
+          float alpha = smoothstep(0.035, 0.085, maxVal);
+          if (alpha <= 0.002) {
+            discard;
+          }
+          gl_FragColor = vec4(color.rgb, color.a * alpha);
+        }
+      `;
+
+      const createShader = (type: number, src: string) => {
+        const shader = gl!.createShader(type);
+        if (!shader) return null;
+        gl!.shaderSource(shader, src);
+        gl!.compileShader(shader);
+        return shader;
+      };
+
+      const vs = createShader(gl.VERTEX_SHADER, vsSource);
+      const fs = createShader(gl.FRAGMENT_SHADER, fsSource);
+
+      if (vs && fs) {
+        program = gl.createProgram();
+        if (program) {
+          gl.attachShader(program, vs);
+          gl.attachShader(program, fs);
+          gl.linkProgram(program);
+          gl.useProgram(program);
+
+          positionBuffer = gl.createBuffer();
+          gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+          gl.bufferData(
+            gl.ARRAY_BUFFER,
+            new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]),
+            gl.STATIC_DRAW,
+          );
+
+          const aPos = gl.getAttribLocation(program, "a_pos");
+          gl.enableVertexAttribArray(aPos);
+          gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+          uvBuffer = gl.createBuffer();
+          gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer);
+          gl.bufferData(
+            gl.ARRAY_BUFFER,
+            new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]),
+            gl.STATIC_DRAW,
+          );
+
+          const aUv = gl.getAttribLocation(program, "a_uv");
+          gl.enableVertexAttribArray(aUv);
+          gl.vertexAttribPointer(aUv, 2, gl.FLOAT, false, 0, 0);
+
+          texture = gl.createTexture();
+          gl.bindTexture(gl.TEXTURE_2D, texture);
+          gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+          gl.viewport(0, 0, canvas.width, canvas.height);
+        }
+      }
+    }
+
+    const renderLoop = () => {
+      if (isDisposed) return;
+
+      if (video.readyState >= 2) {
+        if (canvas.width !== video.videoWidth && video.videoWidth > 0) {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          if (gl) gl.viewport(0, 0, canvas.width, canvas.height);
+        }
+
+        if (gl && program && texture) {
+          gl.bindTexture(gl.TEXTURE_2D, texture);
+          gl.texImage2D(
+            gl.TEXTURE_2D,
+            0,
+            gl.RGBA,
+            gl.RGBA,
+            gl.UNSIGNED_BYTE,
+            video,
+          );
+          gl.clearColor(0, 0, 0, 0);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+          gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        } else {
+          const ctx2d = canvas.getContext("2d");
+          if (ctx2d) {
+            ctx2d.clearRect(0, 0, canvas.width, canvas.height);
+            ctx2d.drawImage(video, 0, 0, canvas.width, canvas.height);
+          }
+        }
+      }
+
+      if ("requestVideoFrameCallback" in video) {
+        callbackId = (video as any).requestVideoFrameCallback(renderLoop);
+      } else {
+        animId = requestAnimationFrame(renderLoop);
+      }
+    };
+
+    const onContextLost = (e: Event) => {
+      e.preventDefault();
+    };
+    canvas.addEventListener("webglcontextlost", onContextLost, false);
+
+    renderLoop();
+
+    return () => {
+      isDisposed = true;
+      canvas.removeEventListener("webglcontextlost", onContextLost, false);
+      if (callbackId !== null && "cancelVideoFrameCallback" in video) {
+        (video as any).cancelVideoFrameCallback(callbackId);
+      }
+      if (animId !== null) {
+        cancelAnimationFrame(animId);
+      }
+      if (gl) {
+        if (texture) gl.deleteTexture(texture);
+        if (positionBuffer) gl.deleteBuffer(positionBuffer);
+        if (uvBuffer) gl.deleteBuffer(uvBuffer);
+        if (program) gl.deleteProgram(program);
+      }
+    };
+  }, [videoRef]);
+
+  return (
+    <>
+      <video
+        ref={videoRef}
+        src={videoSrc}
+        className="hidden"
+        autoPlay
+        muted
+        loop={false}
+        playsInline
+        disablePictureInPicture
+        onLoadedMetadata={onLoadedMetadata}
+        onCanPlay={onCanPlay}
+        onEnded={onEnded}
+        onError={onError}
+        aria-hidden="true"
+        tabIndex={-1}
+      />
+      <canvas
+        ref={canvasRef}
+        width={1920}
+        height={1080}
+        className="h-full w-full object-contain pointer-events-none drop-shadow-[0_25px_60px_rgba(0,0,0,0.55)]"
+      />
+    </>
   );
 }

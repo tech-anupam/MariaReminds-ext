@@ -10,7 +10,6 @@ export async function scheduleNextBreak(totalSeconds: number): Promise<number> {
   await browser.alarms.clear(TYPING_RECHECK_ALARM_NAME);
   await setBreakDueSince(null);
 
-  // If a very small number like 5 is passed, treat as seconds; minimum 5 seconds
   const safeSeconds = Math.max(5, totalSeconds);
   const when = Date.now() + safeSeconds * 1000;
 

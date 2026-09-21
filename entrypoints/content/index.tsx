@@ -50,7 +50,6 @@ export default defineContentScript({
             'MariaRemindsUs: refused to mount overlay root onto the page\'s document.body/html.'
           );
         }
-        // Initially hide host so it never blocks page clicks or scrolling
         shadowHost.style.display = 'none';
         shadowHost.style.pointerEvents = 'none';
 

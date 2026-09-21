@@ -26,7 +26,7 @@ import { TYPING_IDLE_MS, MAX_TYPING_DELAY_MS } from '@/lib/typing';
 const TYPING_RECHECK_INTERVAL_MS = 5_000;
 const lastTypingByTab = new Map<number, number>();
 const NOTIFICATION_ID = 'maria-break-notification';
-const MAX_BREAK_AGE_MS = 25_000; // Break videos are ~10-15s
+const MAX_BREAK_AGE_MS = 25_000;
 
 function getIntervalSeconds(settings: MariaSettings): number {
   if (settings.intervalSeconds && settings.intervalSeconds > 0) {
@@ -88,7 +88,7 @@ export default defineBackground(() => {
       if (Date.now() - pending.triggeredAt > MAX_BREAK_AGE_MS) {
         await setPendingBreak(null);
       } else {
-        return; // currently in an active break
+        return;
       }
     }
 
@@ -192,8 +192,6 @@ export default defineBackground(() => {
     const allTabs = await browser.tabs.query({});
     let activeTab = await getFocusedActiveTab();
 
-    // If forcing break (e.g. "Take a break now") and active tab cannot host content scripts (e.g. chrome://extensions),
-    // focus the first available web tab so the video can display.
     if (options.force && (!activeTab?.url || !/^https?:\/\//.test(activeTab.url))) {
       const eligibleTab = allTabs.find((t) => t.url && /^https?:\/\//.test(t.url));
       if (eligibleTab?.id !== undefined) {
@@ -241,10 +239,8 @@ export default defineBackground(() => {
     const pendingBreak = { breakTypeId, triggeredAt: Date.now(), targetTabId };
     await setPendingBreak(pendingBreak);
 
-    // Play actual video audio via offscreen document (zero browser autoplay blocks)
     void playOffscreenAudio();
 
-    // Broadcast instant wake-up to all web tabs
     for (const t of allTabs) {
       if (t.id !== undefined && t.url && /^https?:\/\//.test(t.url)) {
         browser.tabs.sendMessage(t.id, { type: 'BREAK_TRIGGERED', pendingBreak }).catch(() => void 0);
@@ -404,6 +400,5 @@ export default defineBackground(() => {
     }
   }
 
-  // Ensure initialized immediately whenever service worker boots
   void ensureInitialized();
 });

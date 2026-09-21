@@ -6,9 +6,8 @@ export const BREAK_TYPES: BreakType[] = [
     id: 'drink-water',
     label: 'Drink Water',
     tagline: 'Take a refreshing sip with Maria.',
-    description:
-      'Grab your water bottle and hydrate with Maria. Staying hydrated keeps your mind sharp.',
-    video: 'maria-drink-water.webm',
+    description: 'Grab your water bottle and hydrate with Maria. Staying hydrated keeps your mind sharp.',
+    video: 'maria-drink-water.mp4',
     suggestedSeconds: 8,
     accent: {
       solid: 'bg-cyan-500',
@@ -35,6 +34,6 @@ export function getBreakType(id?: BreakTypeId | string): BreakType {
 }
 
 export function getVideoUrl(breakType?: BreakType): string {
-  const file = breakType?.video || 'maria-drink-water.webm';
+  const file = breakType?.video || 'maria-drink-water.mp4';
   return (browser.runtime as any).getURL(`videos/${file}`);
 }

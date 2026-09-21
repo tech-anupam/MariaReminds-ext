@@ -1,5 +1,29 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
-  <rect width="128" height="128" rx="20" fill="#2a1a3d"/>
-  <circle cx="64" cy="48" r="24" fill="#f9a8d4"/>
-  <path d="M32 112c0-17.7 14.3-32 32-32s32 14.3 32 32" fill="#e879a9"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0284c7"/>
+      <stop offset="50%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#4f46e5"/>
+    </linearGradient>
+    <linearGradient id="dropGrad" x1="20%" y1="0%" x2="80%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="50%" stop-color="#e0f2fe"/>
+      <stop offset="100%" stop-color="#bae6fd"/>
+    </linearGradient>
+    <linearGradient id="ringGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#a5f3fc" stop-opacity="0.2"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="url(#bg)"/>
+  <rect x="2" y="2" width="124" height="60" rx="26" fill="white" fill-opacity="0.12"/>
+  <circle cx="64" cy="68" r="38" fill="none" stroke="url(#ringGrad)" stroke-width="3" stroke-dasharray="8 4"/>
+  <circle cx="64" cy="68" r="28" fill="none" stroke="white" stroke-opacity="0.2" stroke-width="1.5"/>
+  <path d="M64 26 C64 26, 40 58, 40 74 C40 87.25 50.75 98 64 98 C77.25 98 88 87.25 88 74 C88 58, 64 26, 64 26 Z" fill="url(#dropGrad)" filter="url(#glow)"/>
+  <path d="M52 64 C50 68, 49 73, 50 78 C51 84, 55 88, 60 90 C56 88, 54 84, 53 79 C52 74, 54 69, 56 65 Z" fill="white" fill-opacity="0.75"/>
+  <circle cx="70" cy="56" r="3.5" fill="white" fill-opacity="0.9"/>
 </svg>

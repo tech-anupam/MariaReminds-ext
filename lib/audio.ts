@@ -1,7 +1,3 @@
-/**
- * Web Audio API based mindful hydration chimes.
- * Works without external assets and guarantees crisp, crystal-clear audio.
- */
 let sharedAudioCtx: AudioContext | null = null;
 
 function getAudioContext(): AudioContext | null {
@@ -27,7 +23,6 @@ export function playHydrationChime(): void {
   try {
     const now = ctx.currentTime;
 
-    // Tone 1: Warm fundamental bell (587.33 Hz - D5)
     const osc1 = ctx.createOscillator();
     const gain1 = ctx.createGain();
     osc1.type = 'sine';
@@ -40,7 +35,6 @@ export function playHydrationChime(): void {
     osc1.start(now);
     osc1.stop(now + 1.2);
 
-    // Tone 2: Bright harmonic chime (880 Hz - A5)
     const osc2 = ctx.createOscillator();
     const gain2 = ctx.createGain();
     osc2.type = 'sine';
@@ -53,7 +47,6 @@ export function playHydrationChime(): void {
     osc2.start(now + 0.12);
     osc2.stop(now + 1.5);
 
-    // Tone 3: Sparkling water droplet bell (1174.66 Hz - D6)
     const osc3 = ctx.createOscillator();
     const gain3 = ctx.createGain();
     osc3.type = 'sine';
@@ -66,7 +59,6 @@ export function playHydrationChime(): void {
     osc3.start(now + 0.24);
     osc3.stop(now + 1.8);
   } catch {
-    // AudioContext might still be restricted until user gesture
   }
 }
 
