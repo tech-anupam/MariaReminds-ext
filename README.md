@@ -1,6 +1,6 @@
 # MariaReminds
 
-[![MariaReminds Preview](https://streamable.com)](https://streamable.com/x6fy8m)
+[![Demo Video](Streamble Link)](https://streamable.com/x6fy8m)
 
 A mindful hydration & break companion for your browser.
 
