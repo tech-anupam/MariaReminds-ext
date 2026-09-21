@@ -276,6 +276,8 @@ function BreakVideo({
   const [videoFailed, setVideoFailed] = useState(false);
   const isCompletingRef = useRef(false);
 
+  const [videoReady, setVideoReady] = useState(false);
+
   const complete = useCallback(() => {
     if (ctx.isInvalid || isCompletingRef.current) return;
     isCompletingRef.current = true;
@@ -307,7 +309,7 @@ function BreakVideo({
       if (isVisible) {
         if (
           video.readyState >= 1 &&
-          (forceSeek || Math.abs(video.currentTime - elapsed) > 1.5)
+          ((forceSeek && elapsed > 0.5) || Math.abs(video.currentTime - elapsed) > 1.2)
         ) {
           try {
             video.currentTime = elapsed;
@@ -329,7 +331,7 @@ function BreakVideo({
   );
 
   useEffect(() => {
-    syncPlayback(true);
+    syncPlayback(false);
   }, [syncPlayback]);
 
   useEffect(() => {
@@ -382,233 +384,28 @@ function BreakVideo({
         {videoFailed ? (
           <div className="h-full w-full bg-slate-900/60 rounded-2xl border border-white/5" />
         ) : (
-          <TransparentCanvasVideo
-            videoSrc={videoSrc}
-            videoRef={videoRef}
-            onLoadedMetadata={() => syncPlayback(true)}
-            onCanPlay={() => syncPlayback(true)}
+          <video
+            ref={videoRef}
+            src={videoSrc}
+            className={`h-full w-full object-contain pointer-events-none drop-shadow-[0_25px_60px_rgba(0,0,0,0.55)] transition-opacity duration-300 ${videoReady ? "opacity-100" : "opacity-0"}`}
+            autoPlay
+            muted
+            loop={false}
+            playsInline
+            disablePictureInPicture
+            onLoadedMetadata={() => syncPlayback(false)}
+            onCanPlay={() => {
+              syncPlayback(false);
+              setVideoReady(true);
+            }}
+            onPlaying={() => setVideoReady(true)}
             onEnded={complete}
             onError={() => setVideoFailed(true)}
+            aria-hidden="true"
+            tabIndex={-1}
           />
         )}
       </div>
     </div>
-  );
-}
-
-function TransparentCanvasVideo({
-  videoSrc,
-  videoRef,
-  onLoadedMetadata,
-  onCanPlay,
-  onEnded,
-  onError,
-}: {
-  videoSrc: string;
-  videoRef: React.RefObject<HTMLVideoElement>;
-  onLoadedMetadata: () => void;
-  onCanPlay: () => void;
-  onEnded: () => void;
-  onError: () => void;
-}) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas) return;
-
-    let gl: WebGLRenderingContext | null = null;
-    let program: WebGLProgram | null = null;
-    let texture: WebGLTexture | null = null;
-    let positionBuffer: WebGLBuffer | null = null;
-    let uvBuffer: WebGLBuffer | null = null;
-    let callbackId: number | null = null;
-    let animId: number | null = null;
-    let isDisposed = false;
-
-    try {
-      gl =
-        canvas.getContext("webgl", { alpha: true, premultipliedAlpha: false }) ||
-        (canvas.getContext("experimental-webgl", {
-          alpha: true,
-          premultipliedAlpha: false,
-        }) as WebGLRenderingContext | null);
-    } catch {}
-
-    if (gl) {
-      const vsSource = `
-        attribute vec2 a_pos;
-        attribute vec2 a_uv;
-        varying vec2 v_uv;
-        void main() {
-          gl_Position = vec4(a_pos, 0.0, 1.0);
-          v_uv = a_uv;
-        }
-      `;
-
-      const fsSource = `
-        precision mediump float;
-        uniform sampler2D u_tex;
-        varying vec2 v_uv;
-        void main() {
-          vec4 color = texture2D(u_tex, v_uv);
-          float maxVal = max(color.r, max(color.g, color.b));
-          float alpha = smoothstep(0.035, 0.085, maxVal);
-          if (alpha <= 0.002) {
-            discard;
-          }
-          gl_FragColor = vec4(color.rgb, color.a * alpha);
-        }
-      `;
-
-      const createShader = (type: number, src: string) => {
-        const shader = gl!.createShader(type);
-        if (!shader) return null;
-        gl!.shaderSource(shader, src);
-        gl!.compileShader(shader);
-        return shader;
-      };
-
-      const vs = createShader(gl.VERTEX_SHADER, vsSource);
-      const fs = createShader(gl.FRAGMENT_SHADER, fsSource);
-
-      if (vs && fs) {
-        program = gl.createProgram();
-        if (program) {
-          gl.attachShader(program, vs);
-          gl.attachShader(program, fs);
-          gl.linkProgram(program);
-          gl.useProgram(program);
-
-          positionBuffer = gl.createBuffer();
-          gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-          gl.bufferData(
-            gl.ARRAY_BUFFER,
-            new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]),
-            gl.STATIC_DRAW,
-          );
-
-          const aPos = gl.getAttribLocation(program, "a_pos");
-          gl.enableVertexAttribArray(aPos);
-          gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
-
-          uvBuffer = gl.createBuffer();
-          gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer);
-          gl.bufferData(
-            gl.ARRAY_BUFFER,
-            new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]),
-            gl.STATIC_DRAW,
-          );
-
-          const aUv = gl.getAttribLocation(program, "a_uv");
-          gl.enableVertexAttribArray(aUv);
-          gl.vertexAttribPointer(aUv, 2, gl.FLOAT, false, 0, 0);
-
-          texture = gl.createTexture();
-          gl.bindTexture(gl.TEXTURE_2D, texture);
-          gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-
-          gl.viewport(0, 0, canvas.width, canvas.height);
-        }
-      }
-    }
-
-    const ctx2d = !gl ? canvas.getContext("2d") : null;
-
-    const renderLoop = () => {
-      if (isDisposed) return;
-
-      if (video.readyState >= 2) {
-        if (canvas.width !== video.videoWidth && video.videoWidth > 0) {
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          if (gl) gl.viewport(0, 0, canvas.width, canvas.height);
-        }
-
-        if (gl && program && texture) {
-          try {
-            gl.bindTexture(gl.TEXTURE_2D, texture);
-            gl.texImage2D(
-              gl.TEXTURE_2D,
-              0,
-              gl.RGBA,
-              gl.RGBA,
-              gl.UNSIGNED_BYTE,
-              video,
-            );
-            gl.clearColor(0, 0, 0, 0);
-            gl.clear(gl.COLOR_BUFFER_BIT);
-            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-          } catch {}
-        } else if (ctx2d) {
-          try {
-            ctx2d.clearRect(0, 0, canvas.width, canvas.height);
-            ctx2d.drawImage(video, 0, 0, canvas.width, canvas.height);
-          } catch {}
-        }
-      }
-
-      if ("requestVideoFrameCallback" in video) {
-        callbackId = (video as any).requestVideoFrameCallback(renderLoop);
-      } else {
-        animId = requestAnimationFrame(renderLoop);
-      }
-    };
-
-    const onContextLost = (e: Event) => {
-      e.preventDefault();
-    };
-    canvas.addEventListener("webglcontextlost", onContextLost, false);
-
-    renderLoop();
-
-    return () => {
-      isDisposed = true;
-      canvas.removeEventListener("webglcontextlost", onContextLost, false);
-      if (callbackId !== null && "cancelVideoFrameCallback" in video) {
-        (video as any).cancelVideoFrameCallback(callbackId);
-      }
-      if (animId !== null) {
-        cancelAnimationFrame(animId);
-      }
-      if (gl) {
-        if (texture) gl.deleteTexture(texture);
-        if (positionBuffer) gl.deleteBuffer(positionBuffer);
-        if (uvBuffer) gl.deleteBuffer(uvBuffer);
-        if (program) gl.deleteProgram(program);
-      }
-    };
-  }, [videoRef]);
-
-  return (
-    <>
-      <video
-        ref={videoRef}
-        src={videoSrc}
-        className="hidden"
-        autoPlay
-        muted
-        loop={false}
-        playsInline
-        disablePictureInPicture
-        onLoadedMetadata={onLoadedMetadata}
-        onCanPlay={onCanPlay}
-        onEnded={onEnded}
-        onError={onError}
-        aria-hidden="true"
-        tabIndex={-1}
-      />
-      <canvas
-        ref={canvasRef}
-        width={1920}
-        height={1080}
-        className="h-full w-full object-contain pointer-events-none drop-shadow-[0_25px_60px_rgba(0,0,0,0.55)]"
-      />
-    </>
   );
 }

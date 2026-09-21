@@ -25,7 +25,17 @@ export default defineConfig({
     },
     web_accessible_resources: [
       {
-        resources: ['videos/*', '*.webm', '*.webp', '*.png', '*.mp3'],
+        resources: [
+          'videos/*',
+          'videos/*.webm',
+          'videos/*.mp4',
+          'videos/*.mp3',
+          '*.mp4',
+          '*.webm',
+          '*.webp',
+          '*.png',
+          '*.mp3',
+        ],
         matches: ['<all_urls>'],
       },
     ],
