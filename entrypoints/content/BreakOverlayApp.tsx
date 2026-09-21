@@ -305,7 +305,10 @@ function BreakVideo({
       const isVisible = document.visibilityState === "visible";
 
       if (isVisible) {
-        if (forceSeek || Math.abs(video.currentTime - elapsed) > 1.8) {
+        if (
+          video.readyState >= 1 &&
+          (forceSeek || Math.abs(video.currentTime - elapsed) > 1.5)
+        ) {
           try {
             video.currentTime = elapsed;
           } catch {}
@@ -317,7 +320,9 @@ function BreakVideo({
           playPromise.catch(() => void 0);
         }
       } else {
-        video.pause();
+        try {
+          video.pause();
+        } catch {}
       }
     },
     [complete, ctx, getElapsedSeconds],
@@ -513,6 +518,8 @@ function TransparentCanvasVideo({
       }
     }
 
+    const ctx2d = !gl ? canvas.getContext("2d") : null;
+
     const renderLoop = () => {
       if (isDisposed) return;
 
@@ -524,24 +531,25 @@ function TransparentCanvasVideo({
         }
 
         if (gl && program && texture) {
-          gl.bindTexture(gl.TEXTURE_2D, texture);
-          gl.texImage2D(
-            gl.TEXTURE_2D,
-            0,
-            gl.RGBA,
-            gl.RGBA,
-            gl.UNSIGNED_BYTE,
-            video,
-          );
-          gl.clearColor(0, 0, 0, 0);
-          gl.clear(gl.COLOR_BUFFER_BIT);
-          gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-        } else {
-          const ctx2d = canvas.getContext("2d");
-          if (ctx2d) {
+          try {
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            gl.texImage2D(
+              gl.TEXTURE_2D,
+              0,
+              gl.RGBA,
+              gl.RGBA,
+              gl.UNSIGNED_BYTE,
+              video,
+            );
+            gl.clearColor(0, 0, 0, 0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+          } catch {}
+        } else if (ctx2d) {
+          try {
             ctx2d.clearRect(0, 0, canvas.width, canvas.height);
             ctx2d.drawImage(video, 0, 0, canvas.width, canvas.height);
-          }
+          } catch {}
         }
       }
 
