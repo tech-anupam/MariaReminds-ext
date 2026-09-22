@@ -93,31 +93,53 @@ MariaRemindsUs is an open-source productivity and wellness browser extension bui
 
 ## Highlights
 
-### Non-Disruptive Fullscreen Architecture
-- **In-DOM Shadow Root Overlay**: Uses high z-index isolated Shadow DOM (`z-index: 2147483647`).
-- **No Fullscreen Exit**: Operates within active fullscreen video elements (YouTube, Netflix, Twitch) without triggering `document.exitFullscreen()`.
-- **Background Media Ducking**: Pauses background tab audio and HTML5 media elements during active breaks, then restores playback state on dismissal.
+<p>
+  <img src="https://img.shields.io/badge/Framerate-60_FPS-059669?style=flat-square" alt="60 FPS" />
+  <img src="https://img.shields.io/badge/Transparency-Alpha_VP9-2563EB?style=flat-square" alt="Alpha VP9" />
+  <img src="https://img.shields.io/badge/Fullscreen-Safe_Overlay-7C3AED?style=flat-square" alt="Fullscreen Safe" />
+  <img src="https://img.shields.io/badge/Visuals-Watermark_Free-D97706?style=flat-square" alt="Watermark Free" />
+</p>
 
-### Dual-Chroma Keying & Delogo Pipeline
-- Custom FFmpeg spatial filtering pipeline removing solid backgrounds (both black `#000000` and white `#FFFFFF` regions) into `yuva420p` pixel format with alpha channel.
-- Complete removal of AI watermark artifacts via localized spatial interpolation filters.
-- Re-encoded at steady 60 frames per second using `libvpx-vp9` with low-latency decoding profiles.
+### Seamless Fullscreen Overlays
+- **Stays in Fullscreen**: Appears smoothly over YouTube, Netflix, and Twitch without kicking you out of fullscreen mode.
+- **Auto-Pauses Videos**: Temporarily pauses active media while Maria is on screen, then resumes playback automatically.
+- **Safe Dismissal**: Only closes when you press `Escape` or when the animation ends — accidental clicks won't dismiss it.
+
+### Smooth 60 FPS Transparent Animations
+- **Clean Transparent Backgrounds**: Seamlessly blends into any website with no black or white borders.
+- **Watermark-Free**: Crisp, clean visuals with all AI watermarks removed.
+- **Fluid 60 FPS**: Ultra-smooth playback across all 5 break routines (Water, Gym, Food, Posture, and Sleep).
 
 ### Browser Support
-- **Chrome, Microsoft Edge & Chromium Engines**
-- **Mozilla Firefox** 
+
+<p>
+  <img src="https://img.shields.io/badge/Google_Chrome-Compatible-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="Chrome" />
+  <img src="https://img.shields.io/badge/Microsoft_Edge-Compatible-0078D7?style=flat-square&logo=microsoftedge&logoColor=white" alt="Edge" />
+  <img src="https://img.shields.io/badge/Brave-Compatible-FB542B?style=flat-square&logo=brave&logoColor=white" alt="Brave" />
+  <img src="https://img.shields.io/badge/Mozilla_Firefox-Compatible-FF7139?style=flat-square&logo=firefoxbrowser&logoColor=white" alt="Firefox" />
+</p>
 
 ---
 
 ## Technical Stack
 
-| Layer | Component | Description |
+<p>
+  <img src="https://img.shields.io/badge/WXT-0.19-7C3AED?style=flat-square" alt="WXT" />
+  <img src="https://img.shields.io/badge/Vite-6.4-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite" />
+  <img src="https://img.shields.io/badge/React-18.3-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React" />
+  <img src="https://img.shields.io/badge/Tailwind_CSS-3.4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white" alt="Tailwind" />
+  <img src="https://img.shields.io/badge/TypeScript-5.6-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/FFmpeg-VP9_60fps-007808?style=flat-square&logo=ffmpeg&logoColor=white" alt="FFmpeg" />
+  <img src="https://img.shields.io/badge/Shadow_DOM-Encapsulated-111827?style=flat-square" alt="Shadow DOM" />
+</p>
+
+| Layer | Technology | Details |
 |:---|:---|:---|
-| **Core Framework** | WXT 0.19 + Vite | Next-generation WebExtension development framework |
-| **User Interface** | React 18 + Tailwind CSS 3 | Modular component architecture with reactive state stores |
-| **Type Safety** | TypeScript 5.6 | Strict type contracts across messaging and storage boundaries |
-| **Media Pipeline** | FFmpeg 8.1 (VP9, Opus/MP3) | Hardware-accelerated alpha video decoding and multi-channel audio |
-| **Isolation** | Web Components Shadow DOM | Stylesheet and DOM encapsulation protecting host webpage styles |
+| **Extension Engine** | <img src="https://img.shields.io/badge/WXT-0.19-7C3AED?style=flat-square" alt="WXT" /> <img src="https://img.shields.io/badge/Vite-6.4-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite" /> | Modern cross-browser extension framework for Manifest V3 & Gecko |
+| **User Interface** | <img src="https://img.shields.io/badge/React-18.3-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React" /> <img src="https://img.shields.io/badge/Tailwind_CSS-3.4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white" alt="Tailwind" /> | Reactive component architecture with responsive SVG controls |
+| **Type Safety** | <img src="https://img.shields.io/badge/TypeScript-5.6-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" /> | Strict typing across background alarms and storage state |
+| **Video & Audio** | <img src="https://img.shields.io/badge/FFmpeg-VP9_60fps-007808?style=flat-square&logo=ffmpeg&logoColor=white" alt="FFmpeg" /> | 60 FPS transparent animations with matching audio cues |
+| **Page Safety** | <img src="https://img.shields.io/badge/Shadow_DOM-Isolated-111827?style=flat-square" alt="Shadow DOM" /> | Isolated overlay that never breaks or alters website layouts |
 
 ---
 
@@ -179,13 +201,21 @@ npm run zip
 
 ## Maintainer & Community
 
-- **Developer**: [Anupam Jha](https://github.com/tech-anupam)
-- **Portfolio**: [anupambuilds.store](https://anupambuilds.store)
-- **Discord Community**: [discord.gg/MNCdjVcbtc](https://discord.gg/MNCdjVcbtc)
-- **Repository**: [github.com/tech-anupam/MariaReminds-ext](https://github.com/tech-anupam/MariaReminds-ext)
+<p>
+  <a href="https://github.com/tech-anupam"><img src="https://img.shields.io/badge/Developer-Anupam_Jha-181717?style=flat-square&logo=github&logoColor=white" alt="Developer" /></a>
+  <a href="https://anupambuilds.store"><img src="https://img.shields.io/badge/Portfolio-anupambuilds.store-2563EB?style=flat-square&logo=googlechrome&logoColor=white" alt="Portfolio" /></a>
+  <a href="https://discord.gg/MNCdjVcbtc"><img src="https://img.shields.io/badge/Discord-Join_Community-5865F2?style=flat-square&logo=discord&logoColor=white" alt="Discord" /></a>
+  <a href="https://github.com/tech-anupam/MariaReminds-ext"><img src="https://img.shields.io/badge/Repository-MariaReminds--ext-111827?style=flat-square&logo=github&logoColor=white" alt="Repository" /></a>
+  <a href="https://github.com/tech-anupam/MariaReminds-ext/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-059669?style=flat-square" alt="License" /></a>
+</p>
+
+* **Developer**: [Anupam Jha](https://github.com/tech-anupam)
+* **Portfolio**: [anupambuilds.store](https://anupambuilds.store)
+* **Discord Community**: [discord.gg/MNCdjVcbtc](https://discord.gg/MNCdjVcbtc)
+* **Repository**: [github.com/tech-anupam/MariaReminds-ext](https://github.com/tech-anupam/MariaReminds-ext)
 
 ---
 
 <div align="center">
-  <sub>Licensed under the MIT License. Copyright (c) Anupam Jha.</sub>
+  <sub>Licensed under the MIT License. Copyright &copy; 2026 Anupam Jha.</sub>
 </div>
