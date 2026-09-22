@@ -2,14 +2,23 @@ import { defineConfig } from 'wxt';
 
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
-  manifest: {
+  manifest: ({ browser }) => ({
     name: 'MariaRemindsUs - Break Reminder',
     short_name: 'MariaRemindsUs',
     description:
       'MariaRemindsUs: Mindful water, gym, food, posture, and sleep break reminders with synchronized video across tabs. Works on Chrome, Edge, and Firefox.',
     version: '3.0.0',
-    permissions: ['storage', 'alarms', 'notifications', 'scripting', 'tabs', 'offscreen'],
+    permissions:
+      browser === 'firefox'
+        ? ['storage', 'alarms', 'notifications', 'tabs']
+        : ['storage', 'alarms', 'notifications', 'scripting', 'tabs', 'offscreen'],
     host_permissions: ['<all_urls>'],
+    browser_specific_settings: {
+      gecko: {
+        id: 'maria-reminds-us@tech-anupam',
+        strict_min_version: '109.0',
+      },
+    },
     action: {
       default_icon: {
         '16': 'icon-16.png',
@@ -39,7 +48,7 @@ export default defineConfig({
         matches: ['<all_urls>'],
       },
     ],
-  },
+  }),
   vite: () => ({
     build: {
       modulePreload: false,
