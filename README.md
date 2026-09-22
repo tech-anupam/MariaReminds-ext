@@ -38,7 +38,7 @@ MariaRemindsUs is an open-source productivity and wellness browser extension bui
 
 ---
 
-## Supported Break Routines
+## Supported Reminder Types
 
 <table>
   <thead>
@@ -91,7 +91,7 @@ MariaRemindsUs is an open-source productivity and wellness browser extension bui
 
 ---
 
-## Architectural Highlights
+## Highlights
 
 ### Non-Disruptive Fullscreen Architecture
 - **In-DOM Shadow Root Overlay**: Uses high z-index isolated Shadow DOM (`z-index: 2147483647`).
@@ -103,9 +103,9 @@ MariaRemindsUs is an open-source productivity and wellness browser extension bui
 - Complete removal of AI watermark artifacts via localized spatial interpolation filters.
 - Re-encoded at steady 60 frames per second using `libvpx-vp9` with low-latency decoding profiles.
 
-### Multi-Engine Browser Support
-- **Chrome & Chromium Engines**: Native Chrome Alarms API and Chrome Offscreen Documents for background audio synthesis.
-- **Mozilla Firefox**: Native WebExtension manifest adjustments with internal service-worker Audio fallback handling.
+### Browser Support
+- **Chrome, Microsoft Edge & Chromium Engines**
+- **Mozilla Firefox** 
 
 ---
 
@@ -121,7 +121,7 @@ MariaRemindsUs is an open-source productivity and wellness browser extension bui
 
 ---
 
-## Project Structure
+## Structure
 
 ```
 RemindMeMaria-Ext/
@@ -161,12 +161,6 @@ cd MariaReminds-ext
 # Install dependencies
 npm install
 
-# Start development watcher for Chromium
-npm run dev
-
-# Start development watcher for Firefox
-npm run dev:firefox
-```
 
 ### Production Build
 
@@ -180,25 +174,6 @@ npm run build:firefox
 # Generate distribution archive (.zip)
 npm run zip
 ```
-
----
-
-## Interface Reference
-
-<div align="center">
-  <table>
-    <tr>
-      <td align="center" width="50%">
-        <img src="showcase/docs.png" width="340" alt="Dashboard View" /><br/>
-        <sub><strong>Interactive Dashboard</strong></sub>
-      </td>
-      <td align="center" width="50%">
-        <img src="showcase/templates.png" width="340" alt="Preferences View" /><br/>
-        <sub><strong>Break Configuration & Exclusions</strong></sub>
-      </td>
-    </tr>
-  </table>
-</div>
 
 ---
 
