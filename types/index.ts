@@ -3,7 +3,11 @@ export type BreakTypeId =
   | 'posture'
   | 'eye-break'
   | 'drink-water'
-  | 'stretch';
+  | 'stretch'
+  | 'gym'
+  | 'food'
+  | 'posture-check'
+  | 'sleep';
 
 export interface BreakType {
   id: BreakTypeId;
@@ -11,6 +15,7 @@ export interface BreakType {
   tagline: string;
   description: string;
   video: string;
+  audio: string;
   suggestedSeconds: number;
   accent: {
     solid: string;
@@ -27,8 +32,10 @@ export interface MariaSettings {
   enabled: boolean;
   intervalMinutes: number;
   intervalSeconds?: number;
+  typeIntervals?: Partial<Record<BreakTypeId, number>>;
   soundEnabled: boolean;
   enabledBreakTypes: BreakTypeId[];
+  configuredBreakTypes?: BreakTypeId[];
   breakOrder: BreakOrder;
   notificationStyle: NotificationStyle;
   sequenceCursor: number;
@@ -56,13 +63,14 @@ export interface MariaState {
   settings: MariaSettings;
   pendingBreak: PendingBreak | null;
   nextBreakAt: number | null;
+  nextBreakTypeId?: BreakTypeId | null;
   stats: MariaStats;
 }
 
 export type MariaMessage =
   | { type: 'COMPLETE_BREAK' }
   | { type: 'DISMISS_BREAK' }
-  | { type: 'START_BREAK_NOW' }
+  | { type: 'START_BREAK_NOW'; breakTypeId?: BreakTypeId }
   | { type: 'GET_CURRENT_TAB_ID' }
   | { type: 'SETTINGS_UPDATED' }
   | { type: 'TOGGLE_ENABLED'; enabled: boolean }

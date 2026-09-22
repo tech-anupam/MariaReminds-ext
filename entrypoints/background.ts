@@ -10,6 +10,8 @@ import {
   setPendingBreak,
   recordBreakCompleted,
   getNextBreakAt,
+  getNextBreakTypeId,
+  setNextBreakTypeId,
   getBreakDueSince,
   setBreakDueSince
 } from '@/lib/storage';
@@ -28,7 +30,10 @@ const lastTypingByTab = new Map<number, number>();
 const NOTIFICATION_ID = 'maria-break-notification';
 const MAX_BREAK_AGE_MS = 25_000;
 
-function getIntervalSeconds(settings: MariaSettings): number {
+function getIntervalSeconds(settings: MariaSettings, breakTypeId?: BreakTypeId): number {
+  if (breakTypeId && settings.typeIntervals?.[breakTypeId]) {
+    return settings.typeIntervals[breakTypeId]!;
+  }
   if (settings.intervalSeconds && settings.intervalSeconds > 0) {
     return settings.intervalSeconds;
   }
@@ -81,7 +86,10 @@ export default defineBackground(() => {
   async function ensureInitialized(): Promise<void> {
     await clearStalePendingBreak();
     const settings = await getSettings();
-    if (!settings.enabled) return;
+    if (!settings.enabled || settings.enabledBreakTypes.length === 0) {
+      await cancelScheduledBreak();
+      return;
+    }
 
     const pending = await getPendingBreak();
     if (pending) {
@@ -94,7 +102,9 @@ export default defineBackground(() => {
 
     const nextBreakAt = await getNextBreakAt();
     const alarm = await getBreakAlarm();
-    const intervalSec = getIntervalSeconds(settings);
+    const nextType = await peekNextBreakTypeId();
+    await setNextBreakTypeId(nextType);
+    const intervalSec = getIntervalSeconds(settings, nextType);
 
     if (!alarm || !nextBreakAt || nextBreakAt <= Date.now()) {
       await scheduleNextBreak(intervalSec);
@@ -109,6 +119,7 @@ export default defineBackground(() => {
 
   browser.runtime.onStartup.addListener(async () => {
     await clearStalePendingBreak();
+    await injectIntoExistingTabs();
     await ensureInitialized();
   });
 
@@ -149,12 +160,36 @@ export default defineBackground(() => {
     }
   });
 
-  async function pickNextBreakTypeId(): Promise<BreakTypeId> {
+  async function peekNextBreakTypeId(): Promise<BreakTypeId> {
     const settings = await getSettings();
     const pool = BREAK_TYPES.filter((b) =>
       settings.enabledBreakTypes.includes(b.id)
     );
-    const safePool = pool.length > 0 ? pool : BREAK_TYPES;
+    const safePool = pool.length > 0 ? pool : (settings.configuredBreakTypes && settings.configuredBreakTypes.length > 0 ? BREAK_TYPES.filter(b => settings.configuredBreakTypes!.includes(b.id)) : BREAK_TYPES);
+    if (settings.breakOrder === 'sequential') {
+      const index = settings.sequenceCursor % safePool.length;
+      return safePool[index].id;
+    }
+    const random = safePool[Math.floor(Math.random() * safePool.length)];
+    return random.id;
+  }
+
+  async function pickNextBreakTypeId(preferredId?: BreakTypeId): Promise<BreakTypeId> {
+    if (preferredId) return preferredId;
+    const storedNext = await getNextBreakTypeId();
+    const settings = await getSettings();
+    const pool = BREAK_TYPES.filter((b) =>
+      settings.enabledBreakTypes.includes(b.id)
+    );
+    const safePool = pool.length > 0 ? pool : (settings.configuredBreakTypes && settings.configuredBreakTypes.length > 0 ? BREAK_TYPES.filter(b => settings.configuredBreakTypes!.includes(b.id)) : BREAK_TYPES);
+
+    if (storedNext && safePool.some((b) => b.id === storedNext)) {
+      if (settings.breakOrder === 'sequential') {
+        const index = safePool.findIndex((b) => b.id === storedNext);
+        await updateSettings({ sequenceCursor: (index + 1) % safePool.length });
+      }
+      return storedNext;
+    }
 
     if (settings.breakOrder === 'sequential') {
       const index = settings.sequenceCursor % safePool.length;
@@ -174,9 +209,9 @@ export default defineBackground(() => {
     return tab;
   }
 
-  async function triggerBreak(options: { bypassTypingCheck?: boolean; force?: boolean } = {}): Promise<void> {
+  async function triggerBreak(options: { bypassTypingCheck?: boolean; force?: boolean; breakTypeId?: BreakTypeId } = {}): Promise<void> {
     const settings = await getSettings();
-    if (!settings.enabled && !options.force) {
+    if ((!settings.enabled || settings.enabledBreakTypes.length === 0) && !options.force) {
       await setBreakDueSince(null);
       await browser.alarms.clear(TYPING_RECHECK_ALARM_NAME);
       return;
@@ -235,19 +270,18 @@ export default defineBackground(() => {
     await setBreakDueSince(null);
     await browser.alarms.clear(TYPING_RECHECK_ALARM_NAME);
 
-    const breakTypeId = await pickNextBreakTypeId();
+    const breakTypeId = await pickNextBreakTypeId(options.breakTypeId);
     const pendingBreak = { breakTypeId, triggeredAt: Date.now(), targetTabId };
     await setPendingBreak(pendingBreak);
 
-    void playOffscreenAudio();
+    const breakType = BREAK_TYPES.find((b) => b.id === breakTypeId) ?? BREAK_TYPES[0];
+    void playOffscreenAudio(`videos/${breakType.audio}`);
 
     for (const t of allTabs) {
       if (t.id !== undefined && t.url && /^https?:\/\//.test(t.url)) {
         browser.tabs.sendMessage(t.id, { type: 'BREAK_TRIGGERED', pendingBreak }).catch(() => void 0);
       }
     }
-
-    const breakType = BREAK_TYPES.find((b) => b.id === breakTypeId)!;
 
     if (settings.notificationStyle === 'system') {
       const notificationOptions: Notifications.CreateNotificationOptions = {
@@ -316,10 +350,20 @@ export default defineBackground(() => {
         return;
       case 'START_BREAK_NOW':
         await cancelScheduledBreak();
-        await setPendingBreak(null);
         await stopOffscreenAudio();
         await injectIntoExistingTabs();
-        await triggerBreak({ bypassTypingCheck: true, force: true });
+        await new Promise((r) => setTimeout(r, 120));
+        await triggerBreak({ bypassTypingCheck: true, force: true, breakTypeId: message.breakTypeId });
+        setTimeout(async () => {
+          const pending = await getPendingBreak();
+          if (!pending) return;
+          const tabs = await browser.tabs.query({});
+          for (const t of tabs) {
+            if (t.id !== undefined && t.url && /^https?:\/\//.test(t.url)) {
+              browser.tabs.sendMessage(t.id, { type: 'BREAK_TRIGGERED', pendingBreak: pending }).catch(() => void 0);
+            }
+          }
+        }, 280);
         return;
       case 'GET_CURRENT_TAB_ID':
         void ensureInitialized();
@@ -334,10 +378,12 @@ export default defineBackground(() => {
         const settings = await getSettings();
         const pending = await getPendingBreak();
         const dueSince = await getBreakDueSince();
-        if (!settings.enabled) {
+        if (!settings.enabled || settings.enabledBreakTypes.length === 0) {
           await cancelScheduledBreak();
         } else if (!pending && dueSince === null) {
-          await scheduleNextBreak(getIntervalSeconds(settings));
+          const nextType = await peekNextBreakTypeId();
+          await setNextBreakTypeId(nextType);
+          await scheduleNextBreak(getIntervalSeconds(settings, nextType));
         }
         return;
       }
@@ -345,7 +391,13 @@ export default defineBackground(() => {
         await updateSettings({ enabled: message.enabled });
         if (message.enabled) {
           const settings = await getSettings();
-          await scheduleNextBreak(getIntervalSeconds(settings));
+          if (settings.enabledBreakTypes.length > 0) {
+            const nextType = await peekNextBreakTypeId();
+            await setNextBreakTypeId(nextType);
+            await scheduleNextBreak(getIntervalSeconds(settings, nextType));
+          } else {
+            await cancelScheduledBreak();
+          }
         } else {
           await cancelScheduledBreak();
           await setPendingBreak(null);
@@ -356,6 +408,8 @@ export default defineBackground(() => {
       }
     }
   }
+
+  let fallbackAudio: HTMLAudioElement | null = null;
 
   async function playOffscreenAudio(src: string = 'videos/maria-drink-water.mp3'): Promise<void> {
     const settings = await getSettings();
@@ -372,9 +426,21 @@ export default defineBackground(() => {
           });
         }
         await browser.runtime.sendMessage({ type: 'PLAY_AUDIO', src });
+        return;
       }
     } catch (err) {
       console.warn('Offscreen audio playback notice:', err);
+    }
+    // Firefox fallback: play audio directly in background
+    try {
+      if (fallbackAudio) { fallbackAudio.pause(); fallbackAudio = null; }
+      const audioUrl = (browser.runtime as any).getURL(src);
+      fallbackAudio = new Audio(audioUrl);
+      fallbackAudio.volume = 1;
+      await fallbackAudio.play();
+      fallbackAudio.onended = () => { fallbackAudio = null; };
+    } catch (err) {
+      console.warn('Fallback audio playback notice:', err);
     }
   }
 
@@ -382,6 +448,7 @@ export default defineBackground(() => {
     try {
       await browser.runtime.sendMessage({ type: 'STOP_AUDIO' });
     } catch {}
+    if (fallbackAudio) { fallbackAudio.pause(); fallbackAudio = null; }
   }
 
   async function completeBreak(): Promise<void> {
@@ -395,8 +462,10 @@ export default defineBackground(() => {
     }
 
     const settings = await getSettings();
-    if (settings.enabled) {
-      await scheduleNextBreak(getIntervalSeconds(settings));
+    if (settings.enabled && settings.enabledBreakTypes.length > 0) {
+      const nextType = await peekNextBreakTypeId();
+      await setNextBreakTypeId(nextType);
+      await scheduleNextBreak(getIntervalSeconds(settings, nextType));
     }
   }
 

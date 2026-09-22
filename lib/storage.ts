@@ -12,6 +12,7 @@ const KEYS = {
   settings: 'maria:settings',
   pendingBreak: 'maria:pendingBreak',
   nextBreakAt: 'maria:nextBreakAt',
+  nextBreakTypeId: 'maria:nextBreakTypeId',
   stats: 'maria:stats',
   breakDueSince: 'maria:breakDueSince',
   customVideo: 'maria:customVideo'
@@ -23,6 +24,7 @@ export const DEFAULT_SETTINGS: MariaSettings = {
   intervalSeconds: 1800,
   soundEnabled: true,
   enabledBreakTypes: BREAK_TYPES.map((b) => b.id),
+  configuredBreakTypes: BREAK_TYPES.map((b) => b.id),
   breakOrder: 'random',
   notificationStyle: 'silent',
   sequenceCursor: 0,
@@ -84,10 +86,21 @@ export async function getSettings(): Promise<MariaSettings> {
   const stored = await get<Partial<MariaSettings>>(KEYS.settings, {});
   const merged = { ...DEFAULT_SETTINGS, ...stored };
   const validIds = BREAK_TYPES.map((b) => b.id);
-  const filtered = (merged.enabledBreakTypes || []).filter((id) =>
-    validIds.includes(id)
-  );
-  merged.enabledBreakTypes = filtered.length > 0 ? filtered : validIds;
+
+  if (Array.isArray(stored.enabledBreakTypes)) {
+    merged.enabledBreakTypes = stored.enabledBreakTypes.filter((id) => validIds.includes(id));
+  } else {
+    merged.enabledBreakTypes = [...validIds];
+  }
+
+  if (Array.isArray(stored.configuredBreakTypes)) {
+    merged.configuredBreakTypes = stored.configuredBreakTypes.filter((id) => validIds.includes(id));
+  } else if (Array.isArray(stored.enabledBreakTypes) && stored.enabledBreakTypes.length > 0) {
+    merged.configuredBreakTypes = [...stored.enabledBreakTypes];
+  } else {
+    merged.configuredBreakTypes = [...validIds];
+  }
+
   return merged;
 }
 
@@ -120,6 +133,14 @@ export async function getNextBreakAt(): Promise<number | null> {
 
 export async function setNextBreakAt(timestamp: number | null): Promise<void> {
   await set(KEYS.nextBreakAt, timestamp);
+}
+
+export async function getNextBreakTypeId(): Promise<BreakTypeId | null> {
+  return get<BreakTypeId | null>(KEYS.nextBreakTypeId, null);
+}
+
+export async function setNextBreakTypeId(typeId: BreakTypeId | null): Promise<void> {
+  await set(KEYS.nextBreakTypeId, typeId);
 }
 
 export async function getBreakDueSince(): Promise<number | null> {
@@ -197,6 +218,7 @@ export async function getFullState(): Promise<MariaState> {
         KEYS.settings,
         KEYS.pendingBreak,
         KEYS.nextBreakAt,
+        KEYS.nextBreakTypeId,
         KEYS.stats
       ]);
     } catch (error) {
@@ -209,11 +231,12 @@ export async function getFullState(): Promise<MariaState> {
   };
   const pendingBreak = pick<PendingBreak | null>(bag, KEYS.pendingBreak, null);
   const nextBreakAt = pick<number | null>(bag, KEYS.nextBreakAt, null);
+  const nextBreakTypeId = pick<BreakTypeId | null>(bag, KEYS.nextBreakTypeId, null);
   const stats: MariaStats = {
     ...DEFAULT_STATS,
     ...pick<Partial<MariaStats>>(bag, KEYS.stats, {})
   };
-  return { settings, pendingBreak, nextBreakAt, stats };
+  return { settings, pendingBreak, nextBreakAt, nextBreakTypeId, stats };
 }
 
 export function subscribeToState(

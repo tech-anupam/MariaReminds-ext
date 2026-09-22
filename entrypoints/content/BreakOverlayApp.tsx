@@ -77,10 +77,16 @@ export default function BreakOverlayApp({
       areaName: string,
     ) => {
       if (areaName !== "local") return;
-      if (!(STORAGE_KEYS.customVideo in changes)) return;
-      const next = changes[STORAGE_KEYS.customVideo]?.newValue;
-      if (!ctx.isInvalid) {
-        setCustomVideoDataUrl(typeof next === "string" ? next : null);
+      if (STORAGE_KEYS.customVideo in changes) {
+        const next = changes[STORAGE_KEYS.customVideo]?.newValue;
+        if (!ctx.isInvalid) {
+          setCustomVideoDataUrl(typeof next === "string" ? next : null);
+        }
+      }
+      if (STORAGE_KEYS.pendingBreak in changes || STORAGE_KEYS.settings in changes) {
+        getFullState().then((s) => {
+          if (!ctx.isInvalid) setState(s);
+        });
       }
     };
     browser.storage.onChanged.addListener(onStorageChange);
@@ -226,20 +232,6 @@ export default function BreakOverlayApp({
     }
   }, [isStaleOrInvalid, pendingBreak?.triggeredAt, ctx]);
 
-  useEffect(() => {
-    if (!pendingBreak) return;
-    const exitIfFullscreen = () => {
-      if (document.fullscreenElement) {
-        document.exitFullscreen().catch(() => void 0);
-      }
-    };
-    exitIfFullscreen();
-
-    document.addEventListener("fullscreenchange", exitIfFullscreen);
-    return () =>
-      document.removeEventListener("fullscreenchange", exitIfFullscreen);
-  }, [pendingBreak?.triggeredAt]);
-
   if (!isActive) return null;
 
   const useCustomVideo =
@@ -371,15 +363,13 @@ function BreakVideo({
 
   return (
     <div
-      className="maria-overlay-root fixed inset-0 z-[2147483647] flex items-center justify-center bg-slate-950/70 backdrop-blur-md transition-all select-none cursor-pointer"
+      className="maria-overlay-root fixed inset-0 z-[2147483647] flex items-center justify-center bg-slate-950/70 backdrop-blur-md transition-all select-none"
       role="dialog"
       aria-modal="true"
       aria-label="Maria break"
-      onClick={complete}
     >
       <div
         className="relative flex items-center justify-center w-[min(1280px,92vw)] max-h-[88vh] aspect-video"
-        onClick={complete}
       >
         {videoFailed ? (
           <div className="h-full w-full bg-slate-900/60 rounded-2xl border border-white/5" />

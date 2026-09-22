@@ -1,8 +1,8 @@
 {
   "name": "maria-reminds-us",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": true,
-  "description": "MariaRemindsUs - Mindful break reminders across all tabs with synchronized video.",
+  "description": "MariaRemindsUs - Mindful break reminders with gym, food, posture, sleep & water videos across all tabs.",
   "type": "module",
   "scripts": {
     "dev": "node ./node_modules/wxt/bin/wxt.mjs",

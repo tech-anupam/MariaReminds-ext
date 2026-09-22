@@ -6,8 +6,8 @@ export default defineConfig({
     name: 'MariaRemindsUs - Break Reminder',
     short_name: 'MariaRemindsUs',
     description:
-      'MariaRemindsUs: Mindful breathing, stretching, posture, and hydration break reminders with synchronized video across tabs.',
-    version: '2.0.0',
+      'MariaRemindsUs: Mindful water, gym, food, posture, and sleep break reminders with synchronized video across tabs. Works on Chrome, Edge, and Firefox.',
+    version: '3.0.0',
     permissions: ['storage', 'alarms', 'notifications', 'scripting', 'tabs', 'offscreen'],
     host_permissions: ['<all_urls>'],
     action: {
