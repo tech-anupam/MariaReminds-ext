@@ -30,12 +30,6 @@
 
 </div>
 
----
-
-<div align="center">
-  <img src="showcase/cover.png" width="850" alt="MariaRemindsUs Showcase Overview" />
-</div>
-
 ***
 
 ## Overview
