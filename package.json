@@ -10,6 +10,8 @@
     "build:edge": "node ./node_modules/wxt/bin/wxt.mjs build -b edge",
     "dev:firefox": "node ./node_modules/wxt/bin/wxt.mjs -b firefox",
     "build:firefox": "node ./node_modules/wxt/bin/wxt.mjs build -b firefox",
+    "build:all": "npm run build && npm run build:firefox && npm run package",
+    "package": "powershell -ExecutionPolicy Bypass -File scripts/package-zips.ps1",
     "zip": "node ./node_modules/wxt/bin/wxt.mjs zip",
     "compile": "node ./node_modules/typescript/bin/tsc --noEmit"
   },

@@ -3,8 +3,17 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 $baseDir = Split-Path -Parent $PSScriptRoot
 $outputDir = Join-Path $baseDir ".output"
 
-$firefoxDir = Join-Path $outputDir "MariaRemindUs - FireFox Extension"
-$chromeDir = Join-Path $outputDir "MariaRemindUs - Chrome & Microsoft Edge Extension"
+$firefoxCandidates = @(
+    (Join-Path $outputDir "MariaRemindUs - FireFox Extension"),
+    (Join-Path $outputDir "firefox-mv2")
+)
+$firefoxDir = $firefoxCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+$chromeCandidates = @(
+    (Join-Path $outputDir "MariaRemindUs - Chrome & Microsoft Edge Extension"),
+    (Join-Path $outputDir "chrome-mv3")
+)
+$chromeDir = $chromeCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
 
 $firefoxZip = Join-Path $outputDir "MariaRemindUs - FireFox Extension.zip"
 $chromeZip = Join-Path $outputDir "MariaRemindUs - Chrome & Microsoft Edge Extension.zip"
